@@ -1,0 +1,39 @@
+# ============================================================
+# The Village Chiropractic & Wellness — Netlify configuration
+# Security headers for a static single-page site.
+# ============================================================
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+
+    # --- Clickjacking protection ---
+    # Stops other sites from embedding yours in an <iframe>.
+    X-Frame-Options = "DENY"
+
+    # --- MIME-type sniffing protection ---
+    X-Content-Type-Options = "nosniff"
+
+    # --- Referrer privacy ---
+    # Sends only the origin (not full URL/path) when users click outbound links.
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+    # --- Force HTTPS for 2 years, including subdomains ---
+    # Browsers will refuse to load the site over plain http after the first visit.
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+
+    # --- Limit access to powerful browser features the site doesn't use ---
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+
+    # --- Content Security Policy ---
+    # Allow-list of exactly what this site loads. Anything not listed is blocked,
+    # which neutralizes most injected-script / XSS attempts.
+    #
+    #   default-src 'self'        -> only your own domain by default
+    #   img-src ... data:         -> your embedded base64 photos/logo
+    #   style-src 'unsafe-inline' -> required: the site uses inline <style> and style="" attributes
+    #   script-src 'unsafe-inline'-> required: the site uses inline <script> and onclick="" handlers
+    #   font-src ... gstatic      -> Google Fonts files
+    #   form-action 'none'        -> no web forms on the site, so all form submissions are blocked
+    #   frame-ancestors 'none'    -> modern clickjacking protection (pairs with X-Frame-Options)
+    Content-Security-Policy = "default-src 'self'; img-src 'self' data: https://*.shapo.io https://*.googleusercontent.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.shapo.io; font-src 'self' https://fonts.gstatic.com https://cdn.shapo.io; script-src 'self' 'unsafe-inline' https://cdn.shapo.io; connect-src 'self' https://shapo.io https://*.shapo.io; frame-src https://*.shapo.io; form-action 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
