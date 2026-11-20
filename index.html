@@ -1773,8 +1773,8 @@
     </ul>
     <div style="display:flex;align-items:center;gap:12px;margin-left:auto;">
     <div class="nav-schedule-wrap" style="position:relative;">
-      <button class="nav-cta" onclick="this.parentElement.classList.toggle('open');this.setAttribute('aria-expanded',this.parentElement.classList.contains('open'));" aria-haspopup="true" aria-expanded="false" style="cursor:pointer;border:none;">Schedule ▾</button>
-      <div class="nav-schedule-dropdown" style="display:none;position:absolute;top:calc(100% + 12px);right:0;background:var(--warm-white);min-width:280px;box-shadow:0 12px 40px rgba(47,47,47,0.14);z-index:1000;border-top:2px solid var(--dusty-blue);">
+      <button class="nav-cta" onclick="setScheduleOpen(this.getAttribute('aria-expanded') !== 'true')" aria-controls="desktop-schedule" aria-expanded="false" style="cursor:pointer;border:none;">Schedule ▾</button>
+      <div id="desktop-schedule" class="nav-schedule-dropdown" style="display:none;position:absolute;top:calc(100% + 12px);right:0;background:var(--warm-white);min-width:280px;box-shadow:0 12px 40px rgba(47,47,47,0.14);z-index:1000;border-top:2px solid var(--dusty-blue);">
         <div style="padding:16px 24px;">
           <p style="font-family:'Mulish',sans-serif;font-size:1rem;font-weight:400;letter-spacing:0.04em;text-transform:uppercase;color:rgba(47,47,47,0.72);margin:0 0 8px;">Seen Brett within the last 6 months, but a new patient at The Village?</p>
           <a href="https://portal.sked.life/new-patient?key=834cd1a9fa829f7e1592483fca99ad3dcc6b1f3999c63ee8d217912cbdd3a2e2" target="_blank" rel="noopener noreferrer" style="display:block;font-family:'Mulish',sans-serif;font-size:1rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--charcoal);text-decoration:none;font-weight:600;">Continuity of Care Appointment<span class="sr-only"> (opens in new tab)</span></a>
@@ -1791,7 +1791,7 @@
         </div>
       </div>
     </div>
-    <button class="hamburger" id="hamburger" aria-label="Open navigation menu" aria-expanded="false" onclick="toggleMenu()">
+    <button class="hamburger" id="hamburger" aria-label="Open navigation menu" aria-controls="mobile-menu" aria-expanded="false" onclick="toggleMenu()">
       <span></span>
       <span></span>
       <span></span>
@@ -1801,7 +1801,7 @@
   <div role="status" style="background:#345C88;color:var(--warm-white);text-align:center;padding:12px 16px;font-family:'Mulish',sans-serif;font-size:1rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">Schedule Online!</div>
 
   <!-- MOBILE MENU -->
-  <div class="mobile-menu" id="mobile-menu" role="dialog" aria-label="Navigation menu">
+  <div class="mobile-menu" id="mobile-menu" role="navigation" aria-label="Navigation menu">
     <a href="#" onclick="closeMenu()">Home</a>
     <a href="#about" onclick="closeMenu()">About</a>
     <a href="#services" onclick="closeMenu()">Services</a>
@@ -2548,7 +2548,7 @@
   }
   document.addEventListener('keydown', function(e){
     if(!_activeModal) return;
-    if(e.key === 'Escape' || e.keyCode === 27){ closeModal(_activeModal.id); return; }
+    if(e.key === 'Escape' || e.keyCode === 27){ e.stopImmediatePropagation(); closeModal(_activeModal.id); return; }
     if(e.key === 'Tab' || e.keyCode === 9){
       var items = Array.prototype.slice.call(_activeModal.querySelectorAll('a[href],button,input,select,textarea,[tabindex]:not([tabindex=\"-1\"])')).filter(function(el){ return el.offsetParent !== null; });
       if(!items.length) return;
@@ -2560,55 +2560,77 @@
 
   window.addEventListener("load", initSite);
 
-  // Escape key closes the mobile menu
   document.addEventListener('keydown', function(e) {
+    if (_activeModal) return;
+    const hamburger = document.getElementById('hamburger');
+    const menu = document.getElementById('mobile-menu');
+    const schedule = document.querySelector('.nav-cta');
     if (e.key === 'Escape') {
-      closeMenu();
+      if (menu.classList.contains('open')) closeMenu(true);
+      else if (schedule.getAttribute('aria-expanded') === 'true') {
+        setScheduleOpen(false);
+        schedule.focus();
+      }
+    } else if (e.key === 'Tab' && menu.classList.contains('open')) {
+      const links = menu.querySelectorAll('a[href]');
+      if (!e.shiftKey && document.activeElement === links[links.length - 1]) {
+        e.preventDefault();
+        hamburger.focus();
+      } else if (e.shiftKey && document.activeElement === hamburger) {
+        e.preventDefault();
+        links[links.length - 1].focus();
+      }
     }
   });
-
-  // Prevent horizontal touch panning
-  let touchStartX = 0;
-  document.addEventListener('touchstart', function(e) {
-    touchStartX = e.touches[0].clientX;
-  }, { passive: true });
-  document.addEventListener('touchmove', function(e) {
-    const deltaX = Math.abs(e.touches[0].clientX - touchStartX);
-    const deltaY = Math.abs(e.touches[0].clientY - (touchStartX || 0));
-    if (deltaX > deltaY) {
-      e.preventDefault();
-    }
-  }, { passive: false });
 
   // Prevent horizontal scrolling
   document.body.style.overflowX = 'hidden';
   document.documentElement.style.overflowX = 'hidden';
 
-  // Dismiss overlays when clicking their backdrop.
+  function setScheduleOpen(open) {
+    const wrap = document.querySelector('.nav-schedule-wrap');
+    wrap.classList.toggle('open', open);
+    wrap.querySelector('.nav-cta').setAttribute('aria-expanded', open);
+  }
+
+  // Dismiss overlays when clicking outside their content.
   document.addEventListener('click', function(e) {
     if (_activeModal && e.target === _activeModal) closeModal(_activeModal.id);
-    var wrap = document.querySelector('.nav-schedule-wrap');
-    if (wrap && !wrap.contains(e.target)) wrap.classList.remove('open');
+    if (!document.querySelector('.nav-schedule-wrap').contains(e.target)) setScheduleOpen(false);
   });
 
   function toggleMenu() {
     const hamburger = document.getElementById('hamburger');
     const menu = document.getElementById('mobile-menu');
-    const isOpen = menu.classList.contains('open');
-    hamburger.classList.toggle('open');
-    menu.classList.toggle('open');
-    hamburger.setAttribute('aria-expanded', !isOpen);
-    document.body.style.overflow = isOpen ? '' : 'hidden';
+    if (menu.classList.contains('open')) {
+      closeMenu(true);
+      return;
+    }
+    setScheduleOpen(false);
+    hamburger.classList.add('open');
+    hamburger.setAttribute('aria-expanded', 'true');
+    hamburger.setAttribute('aria-label', 'Close navigation menu');
+    menu.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    hamburger.focus();
   }
 
-  function closeMenu() {
+  function closeMenu(restoreFocus = false) {
     const hamburger = document.getElementById('hamburger');
     const menu = document.getElementById('mobile-menu');
-    hamburger.classList.remove('open');
+    if (!menu.classList.contains('open')) return;
     menu.classList.remove('open');
+    hamburger.classList.remove('open');
     hamburger.setAttribute('aria-expanded', 'false');
+    hamburger.setAttribute('aria-label', 'Open navigation menu');
     document.body.style.overflow = '';
+    if (restoreFocus) hamburger.focus();
   }
+
+  window.matchMedia('(max-width: 1650px)').addEventListener('change', function(e) {
+    if (e.matches) setScheduleOpen(false);
+    else closeMenu();
+  });
 
   function initSite() {
     // Nav scroll
@@ -2807,7 +2829,7 @@
       <p style="margin-bottom:4px;">Email: <a href="mailto:Admin@TheVillageCSRA.com?subject=Privacy%20complaint" style="color:var(--dusty-blue-text);text-decoration:none;">Admin@TheVillageCSRA.com</a></p>
       <p style="margin-bottom:4px;"><strong>To file a complaint with HHS Office for Civil Rights:</strong></p>
       <p style="margin-bottom:4px;">200 Independence Avenue, S.W., Washington, D.C. 20201</p>
-      <p style="margin-bottom:28px;">Toll Free: 1-877-696-6775 &nbsp;·&nbsp; <a href="https://www.hhs.gov/ocr/privacy/hipaa/complaints" style="color:var(--dusty-blue-text);text-decoration:none;">www.hhs.gov/ocr</a></p>
+      <p style="margin-bottom:28px;">Toll Free: 1-877-696-6775 &nbsp;·&nbsp; <a href="https://www.hhs.gov/ocr/privacy/hipaa/complaints" style="color:var(--dusty-blue-text);text-decoration:underline;">www.hhs.gov/ocr</a></p>
 
       <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:500;color:var(--charcoal);margin:28px 0 12px;">6. Contact Information</h3>
       <p style="margin-bottom:4px;">The Village Chiropractic &amp; Wellness</p>
